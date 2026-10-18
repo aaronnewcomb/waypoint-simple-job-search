@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local application data and personal configuration
+jobs.db
+jobs.db-*
+resume.yaml
+resume*.pdf
+AaronNewcomb-*.pdf
+.env
+.env.*
+!.env.example
+
+# Editor and operating system files
+.DS_Store
+.idea/
+.vscode/
+
+# Temporary design/review exports, not used by the application
+/static/trailblazer-header-crop.png
+/static/trailblazer-header-markup.png
+/static/trailblazer-route.png

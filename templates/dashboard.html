@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waypoint</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#2563eb',
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        document.documentElement.dataset.theme = localStorage.getItem('jobSearchTheme') || 'light';
+    </script>
+    <style>
+        .stage-badge { @apply text-xs font-medium px-2 py-1 rounded-full; }
+        .job-row { transition: background-color 0.15s; }
+        .job-row:hover { background-color: #f0f7ff; }
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background: white; border-radius: 12px; max-width: 700px;
+            width: 90%; max-height: 85vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        html[data-theme="dark"] body {
+            background: #0b1220 !important;
+            color: #e5e7eb;
+        }
+        html[data-theme="dark"] .bg-white {
+            background-color: #0f172a !important;
+        }
+        html[data-theme="dark"] .bg-gray-50 {
+            background-color: #111827 !important;
+        }
+        html[data-theme="dark"] .bg-gray-100 {
+            background-color: #1f2937 !important;
+        }
+        html[data-theme="dark"] .bg-gray-50\/50,
+        html[data-theme="dark"] .bg-red-50\/30 {
+            background-color: #111827 !important;
+        }
+        html[data-theme="dark"] .border-gray-200,
+        html[data-theme="dark"] .border-gray-300,
+        html[data-theme="dark"] .border-gray-100 {
+            border-color: #334155 !important;
+        }
+        html[data-theme="dark"] .text-gray-900 {
+            color: #f8fafc !important;
+        }
+        html[data-theme="dark"] .text-gray-800,
+        html[data-theme="dark"] .text-gray-700,
+        html[data-theme="dark"] .text-gray-600 {
+            color: #e2e8f0 !important;
+        }
+        html[data-theme="dark"] .text-gray-500,
+        html[data-theme="dark"] .text-gray-400 {
+            color: #94a3b8 !important;
+        }
+        html[data-theme="dark"] input,
+        html[data-theme="dark"] select,
+        html[data-theme="dark"] textarea {
+            background-color: #0f172a !important;
+            color: #e5e7eb !important;
+            border-color: #334155 !important;
+        }
+        html[data-theme="dark"] .modal-content {
+            background: #0f172a;
+            color: #e5e7eb;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+        html[data-theme="dark"] .job-row:hover {
+            background-color: #172033 !important;
+        }
+        html[data-theme="dark"] .shadow-sm {
+            box-shadow: 0 1px 2px rgba(0,0,0,0.35) !important;
+        }
+        html[data-theme="trailblazer"] body {
+            background-color: #d6ccb7 !important;
+            color: #3f3122;
+        }
+        html[data-theme="trailblazer"] #jobs-area {
+            background-color: #2f4a2a !important;
+            background-image:
+                repeating-linear-gradient(
+                    -12deg,
+                    rgba(184, 210, 144, 0.24) 0,
+                    rgba(184, 210, 144, 0.24) 2px,
+                    transparent 2px,
+                    transparent 14px
+                );
+            border-radius: 0;
+        }
+        html[data-theme="trailblazer"] #app-header {
+            background:
+                url('/static/trailblazer-route.svg'),
+                linear-gradient(135deg, rgba(28, 61, 38, 0.66), rgba(72, 92, 49, 0.52)),
+                linear-gradient(180deg, rgba(15, 34, 20, 0.08), rgba(15, 34, 20, 0.34)),
+                url('/static/trailmap-header.png'),
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(255,255,255,0.04) 0,
+                    rgba(255,255,255,0.04) 1px,
+                    transparent 1px,
+                    transparent 26px
+                );
+            border-color: #3e5e39 !important;
+            background-size: cover, auto, auto, cover, auto;
+            background-position: center center, center center, center center, center center, center center;
+            background-repeat: no-repeat, repeat, repeat, no-repeat, repeat;
+        }
+        html[data-theme="trailblazer"] #app-header .text-gray-900,
+        html[data-theme="trailblazer"] #app-header .text-gray-500 {
+            color: #f3ebd7 !important;
+        }
+        html[data-theme="trailblazer"] #filter-bar {
+            background: rgba(243, 235, 214, 0.94) !important;
+            border-color: #b59d79 !important;
+            backdrop-filter: blur(12px);
+        }
+        html[data-theme="trailblazer"] .bg-white {
+            background-color: #f7f0df !important;
+        }
+        html[data-theme="trailblazer"] .bg-gray-50 {
+            background-color: #ede3cf !important;
+        }
+        html[data-theme="trailblazer"] .bg-gray-100 {
+            background-color: #e4d7bf !important;
+        }
+        html[data-theme="trailblazer"] .bg-gray-50\/50,
+        html[data-theme="trailblazer"] .bg-red-50\/30 {
+            background-color: rgba(232, 220, 196, 0.82) !important;
+        }
+        html[data-theme="trailblazer"] .border-gray-200,
+        html[data-theme="trailblazer"] .border-gray-300,
+        html[data-theme="trailblazer"] .border-gray-100 {
+            border-color: #c8b390 !important;
+        }
+        html[data-theme="trailblazer"] .text-gray-900 {
+            color: #3f3122 !important;
+        }
+        html[data-theme="trailblazer"] .text-gray-800,
+        html[data-theme="trailblazer"] .text-gray-700 {
+            color: #4e412d !important;
+        }
+        html[data-theme="trailblazer"] .text-gray-600 {
+            color: #65543d !important;
+        }
+        html[data-theme="trailblazer"] .text-gray-500,
+        html[data-theme="trailblazer"] .text-gray-400 {
+            color: #7d6a50 !important;
+        }
+        html[data-theme="trailblazer"] input,
+        html[data-theme="trailblazer"] select,
+        html[data-theme="trailblazer"] textarea {
+            background-color: #fbf6ea !important;
+            color: #433321 !important;
+            border-color: #baa37e !important;
+        }
+        html[data-theme="trailblazer"] .modal-content {
+            background: #f7f0df;
+            color: #433321;
+            box-shadow: 0 20px 60px rgba(58, 43, 24, 0.28);
+            border: 1px solid rgba(117, 99, 72, 0.18);
+        }
+        html[data-theme="trailblazer"] .job-row:hover {
+            background-color: #e7dac0 !important;
+        }
+        html[data-theme="trailblazer"] .bg-brand {
+            background-color: #4f6b35 !important;
+        }
+        html[data-theme="trailblazer"] .hover\:bg-blue-700:hover {
+            background-color: #3f552c !important;
+        }
+        html[data-theme="trailblazer"] .bg-green-600 {
+            background-color: #8a5e3a !important;
+        }
+        html[data-theme="trailblazer"] .hover\:bg-green-700:hover {
+            background-color: #744d2f !important;
+        }
+        html[data-theme="trailblazer"] .shadow-sm {
+            box-shadow: 0 10px 22px rgba(62, 46, 29, 0.08) !important;
+        }
+        html[data-theme="trailblazer"] .trailblazer-jobs-heading {
+            color: #f5efe3 !important;
+            text-shadow: 0 1px 10px rgba(42, 30, 18, 0.28);
+        }
+        html[data-theme="stargazer"] body {
+            background:
+                radial-gradient(circle at 20% 18%, rgba(34, 211, 238, 0.12), transparent 20%),
+                radial-gradient(circle at 78% 14%, rgba(250, 204, 21, 0.08), transparent 16%),
+                radial-gradient(circle at 52% 70%, rgba(99, 102, 241, 0.10), transparent 24%),
+                linear-gradient(180deg, #040816 0%, #081021 48%, #0b1731 100%) !important;
+            color: #dce8ff;
+        }
+        html[data-theme="stargazer"] #app-header {
+            background:
+                url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201600%20280%22%3E%0A%3Cg%20fill%3D%22none%22%20stroke%3D%22%23c8d8ff%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%220.72%22%3E%0A%20%20%3Cpath%20d%3D%22M642%20148%20L742%20102%20L820%20142%20L902%20110%20L982%20150%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%0A%20%20%3Ccircle%20cx%3D%22982%22%20cy%3D%22150%22%20r%3D%2211.5%22%20opacity%3D%220.92%22%20stroke-width%3D%222%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M982%20134%20L994%20150%20L982%20166%20L970%20150%20Z%22%20opacity%3D%220.92%22%20stroke-width%3D%221.7%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22%23ffffff%22%20opacity%3D%220.44%22%3E%0A%20%20%3Ccircle%20cx%3D%22642%22%20cy%3D%22148%22%20r%3D%2216%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22982%22%20cy%3D%22150%22%20r%3D%2216%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22%23ffffff%22%20opacity%3D%221%22%3E%0A%20%20%3Ccircle%20cx%3D%22642%22%20cy%3D%22148%22%20r%3D%227.3%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22742%22%20cy%3D%22102%22%20r%3D%227.3%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22820%22%20cy%3D%22142%22%20r%3D%227.3%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22902%22%20cy%3D%22110%22%20r%3D%227.3%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22982%22%20cy%3D%22150%22%20r%3D%227.3%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22%23ffffff%22%20opacity%3D%220.98%22%3E%0A%20%20%3Ccircle%20cx%3D%2272%22%20cy%3D%2234%22%20r%3D%222.3%22%2F%3E%3Ccircle%20cx%3D%22112%22%20cy%3D%2254%22%20r%3D%222.7%22%2F%3E%3Ccircle%20cx%3D%22156%22%20cy%3D%2288%22%20r%3D%222.1%22%2F%3E%3Ccircle%20cx%3D%22218%22%20cy%3D%22120%22%20r%3D%222.5%22%2F%3E%3Ccircle%20cx%3D%22264%22%20cy%3D%2274%22%20r%3D%221.9%22%2F%3E%3Ccircle%20cx%3D%22316%22%20cy%3D%2238%22%20r%3D%223%22%2F%3E%3Ccircle%20cx%3D%22362%22%20cy%3D%22102%22%20r%3D%222.1%22%2F%3E%3Ccircle%20cx%3D%22442%22%20cy%3D%2288%22%20r%3D%222.3%22%2F%3E%3Ccircle%20cx%3D%22486%22%20cy%3D%2240%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%22524%22%20cy%3D%2260%22%20r%3D%222.6%22%2F%3E%3Ccircle%20cx%3D%22582%22%20cy%3D%22114%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%22620%22%20cy%3D%2264%22%20r%3D%221.8%22%2F%3E%3Ccircle%20cx%3D%22690%22%20cy%3D%2254%22%20r%3D%222.4%22%2F%3E%3Ccircle%20cx%3D%22760%22%20cy%3D%22168%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%22846%22%20cy%3D%2252%22%20r%3D%222.1%22%2F%3E%3Ccircle%20cx%3D%22930%22%20cy%3D%22180%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%221008%22%20cy%3D%2272%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%221088%22%20cy%3D%2278%22%20r%3D%222.5%22%2F%3E%3Ccircle%20cx%3D%221126%22%20cy%3D%2248%22%20r%3D%221.9%22%2F%3E%3Ccircle%20cx%3D%221184%22%20cy%3D%22128%22%20r%3D%223%22%2F%3E%3Ccircle%20cx%3D%221258%22%20cy%3D%22164%22%20r%3D%222.7%22%2F%3E%3Ccircle%20cx%3D%221310%22%20cy%3D%2258%22%20r%3D%222.4%22%2F%3E%3Ccircle%20cx%3D%221364%22%20cy%3D%22136%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%221418%22%20cy%3D%2292%22%20r%3D%222.6%22%2F%3E%3Ccircle%20cx%3D%221478%22%20cy%3D%2264%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%221512%22%20cy%3D%2242%22%20r%3D%222.3%22%2F%3E%3Ccircle%20cx%3D%221540%22%20cy%3D%22126%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%22306%22%20cy%3D%22178%22%20r%3D%222.6%22%2F%3E%3Ccircle%20cx%3D%22406%22%20cy%3D%22156%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%22560%22%20cy%3D%22176%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%221160%22%20cy%3D%22182%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%221298%22%20cy%3D%22196%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%22118%22%20cy%3D%22164%22%20r%3D%222.1%22%2F%3E%3Ccircle%20cx%3D%22196%22%20cy%3D%22152%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%22348%22%20cy%3D%22148%22%20r%3D%221.9%22%2F%3E%3Ccircle%20cx%3D%22878%22%20cy%3D%2276%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%221054%22%20cy%3D%22134%22%20r%3D%222.1%22%2F%3E%3Ccircle%20cx%3D%221432%22%20cy%3D%22154%22%20r%3D%222.2%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22%23ffffff%22%20opacity%3D%220.92%22%3E%0A%20%20%3Ccircle%20cx%3D%2296%22%20cy%3D%22118%22%20r%3D%221.4%22%2F%3E%3Ccircle%20cx%3D%22184%22%20cy%3D%2238%22%20r%3D%221.3%22%2F%3E%3Ccircle%20cx%3D%22240%22%20cy%3D%22154%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22398%22%20cy%3D%2258%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22468%22%20cy%3D%22146%22%20r%3D%221.4%22%2F%3E%3Ccircle%20cx%3D%22658%22%20cy%3D%2236%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22716%22%20cy%3D%22202%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22874%22%20cy%3D%22190%22%20r%3D%221.3%22%2F%3E%3Ccircle%20cx%3D%221044%22%20cy%3D%2238%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%221222%22%20cy%3D%2292%22%20r%3D%221.4%22%2F%3E%3Ccircle%20cx%3D%221346%22%20cy%3D%2234%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%221454%22%20cy%3D%22168%22%20r%3D%221.4%22%2F%3E%3Ccircle%20cx%3D%2286%22%20cy%3D%22188%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22214%22%20cy%3D%22206%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22534%22%20cy%3D%22194%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22688%22%20cy%3D%2226%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22962%22%20cy%3D%2236%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%221102%22%20cy%3D%22196%22%20r%3D%221.3%22%2F%3E%3Ccircle%20cx%3D%221388%22%20cy%3D%22188%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22274%22%20cy%3D%22132%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%22604%22%20cy%3D%22192%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%221208%22%20cy%3D%2240%22%20r%3D%221.2%22%2F%3E%3Ccircle%20cx%3D%221496%22%20cy%3D%22182%22%20r%3D%221.2%22%2F%3E%0A%3C%2Fg%3E%0A%3C%2Fsvg%3E"),
+                linear-gradient(180deg, rgba(6, 13, 30, 0.10), rgba(6, 13, 30, 0.22)),
+                linear-gradient(135deg, rgba(7, 17, 39, 0.88), rgba(16, 33, 68, 0.76));
+            border-color: #22375e !important;
+            background-size: cover, auto, auto;
+            background-position: center, center, center;
+            background-repeat: no-repeat, repeat, repeat;
+            box-shadow: 0 14px 38px rgba(0, 0, 0, 0.35);
+        }
+        html[data-theme="stargazer"] #app-header .text-gray-900 {
+            color: #ffd36b !important;
+        }
+        html[data-theme="stargazer"] #app-header .text-gray-500 {
+            color: #adc9ff !important;
+        }
+        html[data-theme="stargazer"] #filter-bar {
+            background: rgba(8, 14, 32, 0.88) !important;
+            border-color: #243659 !important;
+            backdrop-filter: blur(14px);
+        }
+        html[data-theme="stargazer"] .bg-white {
+            background-color: #0b1328 !important;
+        }
+        html[data-theme="stargazer"] .bg-gray-50 {
+            background-color: #08101f !important;
+        }
+        html[data-theme="stargazer"] .bg-gray-100 {
+            background-color: #111c34 !important;
+        }
+        html[data-theme="stargazer"] .bg-gray-50\/50,
+        html[data-theme="stargazer"] .bg-red-50\/30 {
+            background-color: rgba(12, 21, 40, 0.90) !important;
+        }
+        html[data-theme="stargazer"] .border-gray-200,
+        html[data-theme="stargazer"] .border-gray-300,
+        html[data-theme="stargazer"] .border-gray-100 {
+            border-color: #283a61 !important;
+        }
+        html[data-theme="stargazer"] .text-gray-900 {
+            color: #eef5ff !important;
+        }
+        html[data-theme="stargazer"] .text-gray-800,
+        html[data-theme="stargazer"] .text-gray-700,
+        html[data-theme="stargazer"] .text-gray-600 {
+            color: #d9e6ff !important;
+        }
+        html[data-theme="stargazer"] .text-gray-500,
+        html[data-theme="stargazer"] .text-gray-400 {
+            color: #92a7cf !important;
+        }
+        html[data-theme="stargazer"] input,
+        html[data-theme="stargazer"] select,
+        html[data-theme="stargazer"] textarea {
+            background-color: #091224 !important;
+            color: #edf4ff !important;
+            border-color: #29406c !important;
+        }
+        html[data-theme="stargazer"] .modal-content {
+            background: linear-gradient(180deg, #0d1730 0%, #091224 100%);
+            color: #e6efff;
+            border: 1px solid rgba(98, 124, 194, 0.24);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+        }
+        html[data-theme="stargazer"] .job-row:hover {
+            background-color: #13203d !important;
+        }
+        html[data-theme="stargazer"] .bg-brand {
+            background: linear-gradient(135deg, #1d4ed8, #0891b2) !important;
+        }
+        html[data-theme="stargazer"] .hover\:bg-blue-700:hover {
+            background: linear-gradient(135deg, #1e40af, #0e7490) !important;
+        }
+        html[data-theme="stargazer"] .bg-green-600 {
+            background: linear-gradient(135deg, #1d4ed8, #7c3aed) !important;
+        }
+        html[data-theme="stargazer"] .hover\:bg-green-700:hover {
+            background: linear-gradient(135deg, #1e3a8a, #6d28d9) !important;
+        }
+        html[data-theme="stargazer"] .shadow-sm {
+            box-shadow: 0 12px 30px rgba(1, 8, 22, 0.42) !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header id="app-header" class="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 via-cyan-500 to-emerald-500 shadow-sm">
+                    <svg viewBox="0 0 48 48" class="h-7 w-7" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="24" cy="24" r="11" stroke="white" stroke-width="3" opacity="0.95"/>
+                        <path d="M24 10V15" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M24 33V38" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M10 24H15" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M33 24H38" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M24 17L28.5 24L24 31L19.5 24L24 17Z" fill="white"/>
+                        <circle cx="24" cy="24" r="2.4" fill="#0F172A"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Waypoint</h1>
+                    <p class="text-sm text-gray-500">Simple Job Search Tool</p>
+                </div>
+            </div>
+            <div class="text-sm text-gray-500 text-right whitespace-nowrap" id="stats-bar">
+                Loading stats...
+            </div>
+        </div>
+    </header>
+
+    <!-- Filters -->
+    <div id="filter-bar" class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+            <input type="hidden" id="per-page-value" name="per_page" value="50">
+
+            <input type="text" name="search" placeholder="Search jobs..."
+                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-brand"
+                   hx-trigger="keyup changed delay:300ms"
+                   hx-get="/api/jobs"
+                   hx-target="#jobs-table"
+                   hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+
+            <select name="category"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    hx-trigger="change"
+                    hx-get="/api/jobs"
+                    hx-target="#jobs-table"
+                    hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+                <option value="">All Categories</option>
+                {% for val, label in categories %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="stage"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    hx-trigger="change"
+                    hx-get="/api/jobs"
+                    hx-target="#jobs-table"
+                    hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+                <option value="">All Stages</option>
+                {% for val, label in stages %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="location_type"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    hx-trigger="change"
+                    hx-get="/api/jobs"
+                    hx-target="#jobs-table"
+                    hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+                <option value="">All Locations</option>
+                {% for val, label in location_types %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="sort"
+                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    hx-trigger="change"
+                    hx-get="/api/jobs"
+                    hx-target="#jobs-table"
+                    hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+                <option value="match_score">Sort by Match</option>
+                <option value="discovered_at">Sort by Date</option>
+                <option value="company">Sort by Company</option>
+                <option value="stage">Sort by Stage</option>
+            </select>
+
+            <div class="ml-auto flex items-center gap-3">
+                <button onclick="showAddJobModal()"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition border border-gray-300">
+                    ➕ Add Job
+                </button>
+                <button onclick="showSettingsModal()"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition border border-gray-300">
+                    ⚙️ Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jobs Table -->
+    <div id="jobs-area" class="py-6">
+        <div class="max-w-7xl mx-auto px-4">
+            <div id="jobs-table"
+                 hx-get="/api/jobs"
+                 hx-trigger="load"
+                 hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+                <div class="text-center py-12 text-gray-400">
+                    <div class="animate-pulse">Loading jobs...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Detail Modal -->
+    <div id="job-modal" class="hidden modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-content p-6" id="modal-body"></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden modal-overlay" onclick="if(event.target===this)closeSettingsModal()">
+        <div class="modal-content p-6">
+            <div class="flex items-start justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-900">⚙️ Settings</h2>
+                <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="space-y-6">
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-800">Jobs Per Page</h3>
+                            <p class="text-xs text-gray-500 mt-1">Choose how many jobs the dashboard shows at once.</p>
+                        </div>
+                        <select id="settings-per-page"
+                                onchange="savePerPageSetting()"
+                                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-800">Theme</h3>
+                            <p class="text-xs text-gray-500 mt-1">Choose a visual theme for the dashboard, including Light, Dark, Trailblazer, and Stargazer.</p>
+                        </div>
+                        <select id="settings-theme"
+                                onchange="saveThemeSetting()"
+                                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                            <option value="trailblazer">Trailblazer</option>
+                            <option value="stargazer">Stargazer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-800">Scraping</h3>
+                            <p class="text-xs text-gray-500 mt-1">Run a manual scrape to pull in the latest jobs right now.</p>
+                        </div>
+                        <button onclick="triggerScrape()"
+                                class="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                            Scrape Now
+                        </button>
+                    </div>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-800">Email Settings</h3>
+                            <p class="text-xs text-gray-500 mt-1">Enter the email you would like daily digests sent to.</p>
+                        </div>
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div class="flex-1">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Digest Email</label>
+                                <input type="email" id="settings-digest-email" placeholder="name@example.com"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                            </div>
+                            <button onclick="saveEmailSettings()"
+                                    class="w-32 px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                                Save Email
+                            </button>
+                        </div>
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p class="text-xs text-gray-500">Send a test email with the latest daily digest.</p>
+                            <button onclick="triggerDigest()"
+                                    class="w-32 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition self-start sm:self-auto">
+                                Send Digest
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Tracked Job Sources</h3>
+                    <div id="sources-list" class="mb-4 space-y-2">
+                        <div class="text-center py-4 text-sm text-gray-400">Loading sources...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-200 pt-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Add New Source</h3>
+                <form onsubmit="submitAddSource(event)" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Name *</label>
+                            <input type="text" id="src-name" required placeholder="e.g. IBM Careers"
+                                   class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                            <select id="src-type" class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                                <option value="company_page">Company Career Page</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="indeed">Indeed</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">URL (e.g. https://ibm.com/careers)</label>
+                        <input type="text" id="src-url" placeholder="https://..."
+                               class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Search Query (optional)</label>
+                        <input type="text" id="src-query" placeholder="e.g. product marketing manager"
+                               class="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    </div>
+                    <button type="submit"
+                            class="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                        Add Source
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Job Modal -->
+    <div id="add-job-modal" class="hidden modal-overlay" onclick="if(event.target===this)closeAddJobModal()">
+        <div class="modal-content p-6">
+            <div class="flex items-start justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-900">➕ Add Job</h2>
+                <button onclick="closeAddJobModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <form onsubmit="submitAddJob(event)" class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
+                    <input type="text" id="add-title" required class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+                    <input type="text" id="add-company" required class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                        <input type="text" id="add-location" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Location Type</label>
+                        <select id="add-location-type" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                            <option value="remote">Remote</option>
+                            <option value="hybrid">Hybrid</option>
+                            <option value="onsite">On-site</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+                        <input type="text" id="add-source" placeholder="e.g. recruiter, referral" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select id="add-category" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            <option value="pmm">PMM</option>
+                            <option value="education">Education</option>
+                            <option value="it_support">IT Support</option>
+                            <option value="nonprofit_marketing">Non-Profit Marketing</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Job URL</label>
+                    <input type="url" id="add-url" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <p class="text-xs text-gray-500 mt-1">If you include a public job link, Waypoint will try to pull the description from that page for matching.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Custom Description</label>
+                    <textarea id="add-description" rows="5" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                              placeholder="Paste the recruiter email, job summary, or custom notes here if there isn't a public job posting."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
+                    <input type="text" id="add-salary" placeholder="e.g. $150k-$200k" class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">Add Job</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg text-sm z-50"></div>
+
+    <script>
+        // Load stats
+        fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('stats-bar').innerHTML =
+                    `<strong>${data.total_jobs}</strong> active jobs · <strong>${data.pmm_jobs}</strong> PMM · <strong>${data.new_today}</strong> new today`;
+            });
+
+        function openJob(jobId) {
+            document.getElementById('job-modal').classList.remove('hidden');
+            fetch(`/api/jobs/${jobId}`)
+                .then(r => r.json())
+                .then(job => renderJobDetail(job));
+        }
+
+        function closeModal() {
+            document.getElementById('job-modal').classList.add('hidden');
+        }
+
+        function showSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            syncPerPageSetting();
+            loadSettings();
+            loadSources();
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function syncPerPageSetting() {
+            const saved = localStorage.getItem('jobSearchPerPage') || '50';
+            document.getElementById('per-page-value').value = saved;
+            document.getElementById('settings-per-page').value = saved;
+        }
+
+        function applyTheme(theme) {
+            const normalizedTheme = theme === 'trailmap' ? 'trailblazer' : theme;
+            const value = ['light', 'dark', 'trailblazer', 'stargazer'].includes(normalizedTheme) ? normalizedTheme : 'light';
+            document.documentElement.dataset.theme = value;
+            localStorage.setItem('jobSearchTheme', value);
+            const selector = document.getElementById('settings-theme');
+            if (selector) selector.value = value;
+        }
+
+        function savePerPageSetting() {
+            const value = document.getElementById('settings-per-page').value;
+            localStorage.setItem('jobSearchPerPage', value);
+            document.getElementById('per-page-value').value = value;
+            showToast(`Showing ${value === 'all' ? 'all jobs' : value + ' jobs'} per page`);
+            htmx.trigger('#jobs-table', 'load');
+        }
+
+        async function loadSettings() {
+            const r = await fetch('/api/settings');
+            const settings = await r.json();
+            document.getElementById('settings-digest-email').value = settings.digest_email || '';
+            applyTheme(settings.theme || localStorage.getItem('jobSearchTheme') || 'light');
+        }
+
+        async function saveThemeSetting() {
+            const theme = document.getElementById('settings-theme').value;
+            const form = new FormData();
+            form.append('theme', theme);
+            const r = await fetch('/api/settings', { method: 'PUT', body: form });
+            if (!r.ok) {
+                const data = await r.json();
+                showToast(data.detail || 'Could not save theme');
+                return;
+            }
+            applyTheme(theme);
+            const label = theme === 'dark'
+                ? 'Dark'
+                : theme === 'trailblazer'
+                ? 'Trailblazer'
+                : theme === 'stargazer'
+                ? 'Stargazer'
+                : 'Light';
+            showToast(`✅ ${label} theme saved`);
+        }
+
+        async function saveEmailSettings() {
+            const email = document.getElementById('settings-digest-email').value.trim();
+            const form = new FormData();
+            form.append('digest_email', email);
+            const r = await fetch('/api/settings', { method: 'PUT', body: form });
+            if (!r.ok) {
+                const data = await r.json();
+                showToast(data.detail || 'Could not save email');
+                return;
+            }
+            showToast('✅ Email settings saved');
+        }
+
+        async function loadSources() {
+            const r = await fetch('/api/sources');
+            const sources = await r.json();
+            const list = document.getElementById('sources-list');
+            if (!sources.length) {
+                list.innerHTML = '<div class="text-center py-4 text-sm text-gray-400">No sources configured</div>';
+                return;
+            }
+            list.innerHTML = sources.map(s => `
+                <div class="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <span class="${s.is_enabled ? 'text-green-500' : 'text-gray-400'}">
+                            ${s.is_enabled ? '✅' : '⏸️'}
+                        </span>
+                        <div>
+                            <span class="font-medium text-gray-900 text-sm">${s.name}</span>
+                            ${s.url ? `<span class="text-xs text-gray-400 ml-2">${s.url}</span>` : ''}
+                            <div class="text-xs text-gray-400">${s.source_type}${s.search_query ? ' · query: ' + s.search_query : ''}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleSource(${s.id})"
+                                class="text-xs px-2 py-1 rounded ${s.is_enabled ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'} transition">
+                            ${s.is_enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <button onclick="deleteSource(${s.id})"
+                                class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600 transition">
+                            🗑
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function toggleSource(id) {
+            await fetch(`/api/sources/${id}/toggle`, { method: 'PUT' });
+            loadSources();
+        }
+
+        async function deleteSource(id) {
+            if (!confirm('Delete this source?')) return;
+            await fetch(`/api/sources/${id}`, { method: 'DELETE' });
+            loadSources();
+            showToast('Source deleted');
+        }
+
+        async function submitAddSource(e) {
+            e.preventDefault();
+            const form = new FormData();
+            form.append('name', document.getElementById('src-name').value);
+            form.append('url', document.getElementById('src-url').value);
+            form.append('source_type', document.getElementById('src-type').value);
+            form.append('search_query', document.getElementById('src-query').value);
+
+            const r = await fetch('/api/sources', { method: 'POST', body: form });
+            const data = await r.json();
+            if (data.ok) {
+                document.getElementById('src-name').value = '';
+                document.getElementById('src-url').value = '';
+                document.getElementById('src-query').value = '';
+                loadSources();
+                showToast('✅ Source added');
+            }
+        }
+
+        function showAddJobModal() {
+            document.getElementById('add-job-modal').classList.remove('hidden');
+        }
+
+        function closeAddJobModal() {
+            document.getElementById('add-job-modal').classList.add('hidden');
+        }
+
+        async function submitAddJob(e) {
+            e.preventDefault();
+            const form = new FormData();
+            form.append('title', document.getElementById('add-title').value);
+            form.append('company', document.getElementById('add-company').value);
+            form.append('location', document.getElementById('add-location').value);
+            form.append('location_type', document.getElementById('add-location-type').value);
+            form.append('source', document.getElementById('add-source').value || 'manual');
+            form.append('category', document.getElementById('add-category').value);
+            form.append('url', document.getElementById('add-url').value);
+            form.append('salary_range', document.getElementById('add-salary').value);
+            form.append('description', document.getElementById('add-description').value);
+
+            const r = await fetch('/api/jobs/add', { method: 'POST', body: form });
+            const data = await r.json();
+            if (data.ok) {
+                closeAddJobModal();
+                const descriptionSourceLabel = data.description_source === 'url'
+                    ? 'job page'
+                    : data.description_source === 'custom'
+                    ? 'custom description'
+                    : 'title only';
+                showToast(`✅ Job added · ${data.match_score.toFixed(0)}% match from ${descriptionSourceLabel}`);
+                htmx.trigger('#jobs-table', 'load');
+                document.getElementById('add-title').value = '';
+                document.getElementById('add-company').value = '';
+                document.getElementById('add-location').value = '';
+                document.getElementById('add-source').value = '';
+                document.getElementById('add-url').value = '';
+                document.getElementById('add-salary').value = '';
+                document.getElementById('add-description').value = '';
+            }
+        }
+
+        const STAGE_OPTIONS = [
+            ["saved", "📌 Saved"], ["applied", "📤 Applied"], ["phone_screen", "📞 Phone Screen"],
+            ["interview_1", "🗣 Interview 1"], ["interview_2", "🗣 Interview 2"],
+            ["interview_final", "🏁 Final Interview"], ["offer", "🎉 Offer"],
+            ["accepted", "✅ Accepted"], ["rejected", "❌ Rejected"], ["withdrawn", "🚫 Withdrawn"],
+            ["not_interested", "📦 Archive"],
+        ];
+
+        function renderJobDetail(job) {
+            const stageHtml = job.application
+                ? `<span class="stage-badge bg-blue-100 text-blue-800">${job.application.stage_label}</span>`
+                : '<span class="stage-badge bg-gray-100 text-gray-600">📌 Saved</span>';
+
+            const contactsHtml = job.contacts.map(c => `
+                <div class="bg-gray-50 rounded-lg p-3 mb-2">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="font-medium text-gray-900">${c.name}</span>
+                            ${c.title ? `<span class="text-gray-500 text-sm ml-2">${c.title}</span>` : ''}
+                        </div>
+                        <span class="text-xs text-gray-400">${c.role}</span>
+                    </div>
+                    ${c.email ? `<div class="text-sm text-gray-500 mt-1">📧 ${c.email}</div>` : ''}
+                    ${c.linkedin_url ? `<div class="text-sm text-gray-500">🔗 <a href="${c.linkedin_url}" target="_blank" class="text-brand hover:underline">LinkedIn</a></div>` : ''}
+                    ${c.notes ? `<div class="text-sm text-gray-500 mt-1">${c.notes}</div>` : ''}
+                    ${c.interactions.length ? `
+                        <div class="mt-2 pt-2 border-t border-gray-200">
+                            <span class="text-xs font-medium text-gray-500">Interactions:</span>
+                            ${c.interactions.map(ix => `
+                                <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                                    <span>${ix.type}</span>
+                                    <span>·</span>
+                                    <span>${new Date(ix.happened_at).toLocaleDateString()}</span>
+                                    ${ix.thank_you_sent ? '<span class="text-green-600">✅ Thank you sent</span>' : ''}
+                                    ${ix.follow_up_needed ? '<span class="text-orange-600">⚠ Follow up</span>' : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('') || '<p class="text-sm text-gray-400">No contacts yet</p>';
+
+            document.getElementById('modal-body').innerHTML = `
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex-1">
+                        <h2 class="text-xl font-bold text-gray-900">${job.title}</h2>
+                        <p class="text-gray-600 mt-1">${job.company} · ${job.location} · ${job.location_type}</p>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-4">
+                    ${stageHtml}
+                    <span class="stage-badge bg-purple-100 text-purple-800">${job.category_label}</span>
+                    <span class="stage-badge bg-green-100 text-green-800">Match: ${job.match_score.toFixed(0)}%</span>
+                    ${job.source ? `<span class="stage-badge bg-gray-100 text-gray-600">${job.source}</span>` : ''}
+                    ${job.salary_range ? `<span class="stage-badge bg-yellow-100 text-yellow-800">${job.salary_range}</span>` : ''}
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <a href="${job.url}" target="_blank" class="px-3 py-1.5 bg-brand text-white rounded-lg text-sm hover:bg-blue-700">🔗 View Job</a>
+                    <button onclick="recalculateMatch(${job.id})" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                        Recalculate Match
+                    </button>
+                    <select onchange="updateStage(${job.id}, this.value)" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+                        <option value="">Update Stage...</option>
+                        ${STAGE_OPTIONS.map(s => `<option value="${s[0]}" ${(job.application?.stage||'saved')===s[0]?'selected':''}>${s[1]}</option>`).join('')}
+                    </select>
+                    <button onclick='deleteJob(${job.id}, ${JSON.stringify(job.title)})' class="px-3 py-1.5 border border-red-300 text-red-700 rounded-lg text-sm hover:bg-red-50">
+                        Delete Job
+                    </button>
+                </div>
+
+                ${job.description ? `
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-900 mb-2">Description</h3>
+                        <div class="text-sm text-gray-600 bg-gray-50 rounded-lg p-4 max-h-48 overflow-y-auto whitespace-pre-wrap">${job.description}</div>
+                    </div>
+                ` : ''}
+
+                <div class="border-t border-gray-200 pt-4 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-gray-900">Contacts</h3>
+                        <button onclick="showAddContact(${job.id})" class="text-sm text-brand hover:underline">+ Add Contact</button>
+                    </div>
+                    <div id="contacts-list-${job.id}">${contactsHtml}</div>
+                </div>
+
+                ${job.activities && job.activities.length ? `
+                <div class="border-t border-gray-200 pt-4">
+                    <h3 class="font-semibold text-gray-900 mb-3">📋 Activity History</h3>
+                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                        ${job.activities.map(a => `
+                            <div class="flex gap-3 text-sm">
+                                <span class="text-gray-400 text-xs whitespace-nowrap pt-0.5">${new Date(a.created_at).toLocaleString()}</span>
+                                <span class="text-gray-600">${a.detail}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        async function updateStage(jobId, stage) {
+            if (!stage) return;
+            const form = new FormData();
+            form.append('stage', stage);
+            const r = await fetch(`/api/jobs/${jobId}/stage`, { method: 'PUT', body: form });
+            const data = await r.json();
+            showToast(`Stage updated to ${data.stage_label}`);
+            htmx.trigger('#jobs-table', 'load');
+        }
+
+        async function recalculateMatch(jobId) {
+            showToast('Recalculating match...');
+            const r = await fetch(`/api/jobs/${jobId}/recalculate-match`, { method: 'POST' });
+            const data = await r.json();
+            if (!r.ok) {
+                showToast(data.detail || 'Could not recalculate match');
+                return;
+            }
+            const sourceLabel = data.description_source === 'url'
+                ? 'job page'
+                : data.description_source === 'saved'
+                ? 'saved description'
+                : 'title only';
+            showToast(`Match recalculated: ${data.match_score.toFixed(0)}% from ${sourceLabel}`);
+            htmx.trigger('#jobs-table', 'load');
+            openJob(jobId);
+        }
+
+        async function deleteJob(jobId, title) {
+            if (!confirm(`Delete "${title}" from the database?`)) return;
+            const r = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+            const data = await r.json();
+            if (!r.ok) {
+                showToast(data.detail || 'Could not delete job');
+                return;
+            }
+            closeModal();
+            showToast('🗑 Job deleted');
+            htmx.trigger('#jobs-table', 'load');
+        }
+
+        async function showFeedback(jobId, title, company) {
+            const liked = prompt(
+                `Feedback for: ${title} at ${company}\n\n` +
+                'What do you LIKE about this job? (helps find more like it)\n' +
+                'Leave blank if nothing in particular.\n\n' +
+                'Examples: great role fit, love the company, good industry, perfect level, great location'
+            );
+            if (liked === null) return;  // Cancel
+
+            const disliked = prompt(
+                `Feedback for: ${title} at ${company}\n\n` +
+                'What do you DISLIKE or what concerns you? (helps avoid similar)\n' +
+                'Leave blank if nothing.\n\n' +
+                'Examples: wrong industry, too junior/senior, bad location, company not a fit, not PMM'
+            );
+            if (disliked === null) return;
+
+            if (!liked.trim() && !disliked.trim()) {
+                showToast('No feedback entered');
+                return;
+            }
+
+            const form = new FormData();
+            form.append('action', 'feedback');
+            form.append('liked', liked.trim());
+            form.append('disliked', disliked.trim());
+            await fetch(`/api/jobs/${jobId}/feedback`, { method: 'POST', body: form });
+            showToast('✅ Feedback saved');
+            htmx.trigger('#jobs-table', 'load');
+        }
+
+        async function markNotInterested(jobId) {
+            const form = new FormData();
+            form.append('is_excluded', 'true');
+            await fetch(`/api/jobs/${jobId}`, { method: 'PUT', body: form });
+            showToast('Hidden from view');
+            htmx.trigger('#jobs-table', 'load');
+        }
+
+        async function markInterested(jobId) {
+            const form = new FormData();
+            form.append('is_excluded', 'false');
+            await fetch(`/api/jobs/${jobId}`, { method: 'PUT', body: form });
+            showToast('Restored');
+            htmx.trigger('#jobs-table', 'load');
+        }
+
+        async function triggerScrape() {
+            showToast('🔄 Scraping jobs in background...');
+            await fetch('/api/scrape', { method: 'POST' });
+            setTimeout(() => {
+                htmx.trigger('#jobs-table', 'load');
+                location.reload();
+            }, 5000);
+        }
+
+        async function triggerDigest() {
+            showToast('📧 Sending digest...');
+            const r = await fetch('/api/digest', { method: 'POST' });
+            const data = await r.json();
+            showToast(`Digest sent with ${data.jobs_sent} jobs`);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        function showAddContact(jobId) {
+            const name = prompt('Contact name:');
+            if (!name) return;
+            const title = prompt('Title (optional):') || '';
+            const email = prompt('Email (optional):') || '';
+            const linkedin = prompt('LinkedIn URL (optional):') || '';
+            const role = prompt('Role (recruiter, hiring_manager, interviewer):') || '';
+
+            const form = new FormData();
+            form.append('name', name);
+            form.append('title', title);
+            form.append('email', email);
+            form.append('linkedin_url', linkedin);
+            form.append('role', role);
+
+            fetch(`/api/jobs/${jobId}/contacts`, { method: 'POST', body: form })
+                .then(r => r.json())
+                .then(() => {
+                    showToast('✅ Contact added');
+                    openJob(jobId);
+                });
+        }
+
+        syncPerPageSetting();
+        applyTheme(localStorage.getItem('jobSearchTheme') || 'light');
+    </script>
+</body>
+</html>

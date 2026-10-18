@@ -1,0 +1,316 @@
+<!-- Jobs Table Partial (loaded via HTMX) -->
+<div>
+    {% set current_sort = current_sort | default('match_score') %}
+    {% set pmm_jobs = jobs | selectattr('is_excluded', 'equalto', false) | selectattr('category', 'equalto', 'pmm') | selectattr('stage', 'ne', 'not_interested') | list %}
+    {% set other_jobs = jobs | selectattr('is_excluded', 'equalto', false) | selectattr('category', 'ne', 'pmm') | selectattr('stage', 'ne', 'not_interested') | list %}
+    {% set archived_jobs = archived_jobs | default(jobs | selectattr('stage', 'equalto', 'not_interested') | list) %}
+    {% set excluded_jobs = excluded_jobs | default(jobs | selectattr('is_excluded', 'equalto', true) | list) %}
+
+    {% macro job_table(jobs_list, title, emoji) %}
+    {% if jobs_list %}
+    <div class="mb-8">
+        <h3 class="trailblazer-jobs-heading text-lg font-semibold text-gray-700 mb-3">{{ emoji }} {{ title }} ({{ jobs_list|length }})</h3>
+        <div class="trailblazer-jobs-surface bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-3">Title</th>
+                        <th class="px-4 py-3">Company</th>
+                        <th class="px-4 py-3">Location</th>
+                        <th class="px-4 py-3">Source</th>
+                        <th class="px-4 py-3">Match</th>
+                        <th class="px-4 py-3">Stage</th>
+                        <th class="px-4 py-3">Category</th>
+                        <th class="px-4 py-3 w-10 text-center">Feedback</th>
+                        <th class="px-4 py-3 w-10 text-center">Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs_list %}
+                    <tr class="job-row border-b border-gray-100 last:border-0">
+                        <td class="px-4 py-3">
+                            <a href="{{ job.url }}" target="_blank" rel="noopener"
+                               class="font-medium text-gray-900 text-sm hover:text-brand transition"
+                               onclick="event.stopPropagation()">
+                                {{ job.title }}
+                                <span class="text-gray-400 text-xs">↗</span>
+                            </a>
+                            {% if job.is_stale %}
+                            <span class="text-xs text-orange-500 block">⚠ Stale</span>
+                            {% endif %}
+                            {% if job.is_new %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-green-500 text-white ml-1">NEW</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ job.company }}</td>
+                        <td class="px-4 py-3">
+                            <div class="text-sm text-gray-600">{{ job.location }}</div>
+                            <span class="text-xs text-gray-400">{{ job.location_type }}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if job.source == 'linkedin' %}
+                            <span class="text-xs text-blue-600 font-medium">💼 LinkedIn</span>
+                            {% elif job.source == 'indeed' %}
+                            <span class="text-xs text-blue-800 font-medium">🔍 Indeed</span>
+                            {% else %}
+                            <span class="text-xs text-gray-500">{{ job.source }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% set score = job.match_score|default(0)|float %}
+                            {% if score >= 70 %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {{ "%.0f"|format(score) }}%
+                            </span>
+                            {% elif score >= 40 %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                {{ "%.0f"|format(score) }}%
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                {{ "%.0f"|format(score) }}%
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3" onclick="event.stopPropagation()">
+                            <select onchange="updateStage({{ job.id }}, this.value)"
+                                    class="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand bg-white">
+                                {% set current_stage = job.stage|default('saved') %}
+                                <option value="saved" {% if current_stage == 'saved' %}selected{% endif %}>📌 Saved</option>
+                                <option value="applied" {% if current_stage == 'applied' %}selected{% endif %}>📤 Applied</option>
+                                <option value="phone_screen" {% if current_stage == 'phone_screen' %}selected{% endif %}>📞 Phone Screen</option>
+                                <option value="interview_1" {% if current_stage == 'interview_1' %}selected{% endif %}>🗣 Interview 1</option>
+                                <option value="interview_2" {% if current_stage == 'interview_2' %}selected{% endif %}>🗣 Interview 2</option>
+                                <option value="interview_final" {% if current_stage == 'interview_final' %}selected{% endif %}>🏁 Final</option>
+                                <option value="offer" {% if current_stage == 'offer' %}selected{% endif %}>🎉 Offer</option>
+                                <option value="accepted" {% if current_stage == 'accepted' %}selected{% endif %}>✅ Accepted</option>
+                                <option value="rejected" {% if current_stage == 'rejected' %}selected{% endif %}>❌ Rejected</option>
+                                <option value="withdrawn" {% if current_stage == 'withdrawn' %}selected{% endif %}>🚫 Withdrawn</option>
+                                <option value="not_interested" {% if current_stage == 'not_interested' %}selected{% endif %}>📦 Archive</option>
+                            </select>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="text-xs font-medium text-gray-500">{{ job.category_label }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+                            {% set has_feedback = job.notes and ('LIKED:' in job.notes or 'NOT_INTERESTED:' in job.notes) %}
+                            <button onclick="showFeedback({{ job.id }}, '{{ job.title|e }}', '{{ job.company|e }}')"
+                                    class="px-2 py-1 text-xs font-medium rounded transition
+                                    {% if has_feedback %}
+                                    bg-green-100 text-green-700 hover:bg-green-200
+                                    {% else %}
+                                    bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-700
+                                    {% endif %}">
+                                {% if has_feedback %}✅ Done{% else %}💬 Feedback{% endif %}
+                            </button>
+                        </td>
+                        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+                            <button onclick="openJob({{ job.id }})"
+                                    class="px-2 py-1 text-xs font-medium text-gray-500 hover:text-brand hover:bg-blue-50 rounded transition"
+                                    title="View details, contacts, notes">
+                                ⓘ Details
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endmacro %}
+
+    {% if current_sort == 'stage' %}
+    {{ job_table(jobs, "Jobs By Stage", "🧭") }}
+    {% else %}
+    <!-- PMM Section -->
+    {{ job_table(pmm_jobs, "Product Marketing Jobs", "📊") }}
+
+    <!-- Other Jobs Section -->
+    {{ job_table(other_jobs, "Other Jobs", "📋") }}
+    {% endif %}
+
+    <!-- Archived Section -->
+    {% if archived_jobs %}
+    <div class="mb-8">
+        <h3 class="trailblazer-jobs-heading text-lg font-semibold text-gray-500 mb-3">📦 Archived ({{ archived_jobs|length }})</h3>
+        <div class="trailblazer-jobs-surface bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden opacity-75">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-3">Title</th>
+                        <th class="px-4 py-3">Company</th>
+                        <th class="px-4 py-3">Location</th>
+                        <th class="px-4 py-3">Source</th>
+                        <th class="px-4 py-3">Match</th>
+                        <th class="px-4 py-3">Stage</th>
+                        <th class="px-4 py-3">Category</th>
+                        <th class="px-4 py-3 w-10 text-center">Feedback</th>
+                        <th class="px-4 py-3 w-10 text-center">Restore</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in archived_jobs %}
+                    <tr class="job-row border-b border-gray-100 last:border-0 bg-gray-50/50">
+                        <td class="px-4 py-3">
+                            <a href="{{ job.url }}" target="_blank" rel="noopener"
+                               class="font-medium text-gray-500 text-sm hover:text-brand transition"
+                               onclick="event.stopPropagation()">
+                                {{ job.title }}
+                            </a>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-400">{{ job.company }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-400">{{ job.location }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-400">{{ job.source }}</td>
+                        <td class="px-4 py-3">
+                            {% set score = job.match_score|default(0)|float %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                                {{ "%.0f"|format(score) }}%
+                            </span>
+                        </td>
+                        <td class="px-4 py-3" onclick="event.stopPropagation()">
+                            <select onchange="updateStage({{ job.id }}, this.value)"
+                                    class="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand bg-white">
+                                <option value="saved">📌 Saved</option>
+                                <option value="applied">📤 Applied</option>
+                                <option value="phone_screen">📞 Phone Screen</option>
+                                <option value="interview_1">🗣 Interview 1</option>
+                                <option value="interview_2">🗣 Interview 2</option>
+                                <option value="interview_final">🏁 Final</option>
+                                <option value="offer">🎉 Offer</option>
+                                <option value="accepted">✅ Accepted</option>
+                                <option value="rejected">❌ Rejected</option>
+                                <option value="withdrawn">🚫 Withdrawn</option>
+                                <option value="not_interested" selected>📦 Archived</option>
+                            </select>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="text-xs font-medium text-gray-400">{{ job.category_label }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+                            {% set has_feedback = job.notes and ('LIKED:' in job.notes or 'NOT_INTERESTED:' in job.notes) %}
+                            <button onclick="showFeedback({{ job.id }}, '{{ job.title|e }}', '{{ job.company|e }}')"
+                                    class="px-2 py-1 text-xs font-medium rounded transition
+                                    {% if has_feedback %}
+                                    bg-green-100 text-green-700 hover:bg-green-200
+                                    {% else %}
+                                    bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-700
+                                    {% endif %}">
+                                {% if has_feedback %}✅ Done{% else %}💬 Feedback{% endif %}
+                            </button>
+                        </td>
+                        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+                            <button onclick="updateStage({{ job.id }}, 'saved')"
+                                    class="text-gray-400 hover:text-green-500 transition text-lg leading-none"
+                                    title="Restore from archive">
+                                ↩️
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Excluded / Not Interested Section -->
+    {% if excluded_jobs %}
+    <div class="mb-8">
+        <h3 class="text-lg font-semibold text-gray-500 mb-3">🚫 Hidden ({{ excluded_jobs|length }})</h3>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden opacity-70">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-4 py-3">Title</th>
+                        <th class="px-4 py-3">Company</th>
+                        <th class="px-4 py-3">Location</th>
+                        <th class="px-4 py-3">Source</th>
+                        <th class="px-4 py-3">Match</th>
+                        <th class="px-4 py-3 w-10 text-center">Feedback</th>
+                        <th class="px-4 py-3 w-10 text-center">Restore</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in excluded_jobs %}
+                    <tr class="job-row border-b border-gray-100 last:border-0 bg-red-50/30">
+                        <td class="px-4 py-3">
+                            <a href="{{ job.url }}" target="_blank" rel="noopener"
+                               class="font-medium text-gray-500 text-sm hover:text-brand transition"
+                               onclick="event.stopPropagation()">
+                                {{ job.title }}
+                            </a>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-400">{{ job.company }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-400">{{ job.location }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-400">{{ job.source }}</td>
+                        <td class="px-4 py-3">
+                            {% set score = job.match_score|default(0)|float %}
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                                {{ "%.0f"|format(score) }}%
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+                            {% set has_feedback = job.notes and ('LIKED:' in job.notes or 'NOT_INTERESTED:' in job.notes) %}
+                            <button onclick="showFeedback({{ job.id }}, '{{ job.title|e }}', '{{ job.company|e }}')"
+                                    class="px-2 py-1 text-xs font-medium rounded transition
+                                    {% if has_feedback %}
+                                    bg-green-100 text-green-700 hover:bg-green-200
+                                    {% else %}
+                                    bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-700
+                                    {% endif %}">
+                                {% if has_feedback %}✅ Done{% else %}💬 Feedback{% endif %}
+                            </button>
+                        </td>
+                        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+                            <button onclick="markInterested({{ job.id }})"
+                                    class="text-gray-400 hover:text-green-500 transition text-lg leading-none"
+                                    title="Restore">
+                                ↩️
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Empty state -->
+    {% if not pmm_jobs and not other_jobs and not archived_jobs and not excluded_jobs %}
+    <div class="text-center py-16 bg-white rounded-xl border border-gray-200">
+        <div class="text-4xl mb-4">📭</div>
+        <p class="text-gray-500 text-lg">No jobs found</p>
+        <p class="text-gray-400 text-sm mt-1">Try adjusting your filters or triggering a scrape</p>
+    </div>
+    {% endif %}
+
+    <!-- Pagination -->
+    {% if pages > 1 %}
+    <div class="flex items-center justify-between mt-4 text-sm">
+        <span class="text-gray-500">{{ total }} jobs total</span>
+        <div class="flex gap-1">
+            {% if page > 1 %}
+            <button class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                    hx-get="/api/jobs?page={{ page - 1 }}"
+                    hx-target="#jobs-table"
+                    hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+                ← Prev
+            </button>
+            {% endif %}
+            <span class="px-3 py-1 text-gray-600">Page {{ page }} of {{ pages }}</span>
+            {% if page < pages %}
+            <button class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                    hx-get="/api/jobs?page={{ page + 1 }}"
+                    hx-target="#jobs-table"
+                    hx-include="[name='category'],[name='stage'],[name='location_type'],[name='sort'],[name='search'],[name='per_page']">
+                Next →
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% elif pmm_jobs or other_jobs or archived_jobs or excluded_jobs %}
+    <p class="text-sm text-gray-500 mt-2">{{ total }} job{% if total != 1 %}s{% endif %} total</p>
+    {% endif %}
+</div>

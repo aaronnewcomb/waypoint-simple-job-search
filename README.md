@@ -22,7 +22,7 @@ Waypoint is a local-first dashboard for finding jobs and keeping an application 
 
 ```bash
 git clone https://github.com/aaronnewcomb/waypoint-simple-job-search.git
-cd waypoint
+cd waypoint-simple-job-search
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 python -m pip install -r requirements.txt

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2172 724">
+  <defs>
+    <filter id="trailblazer-route-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#trailblazer-route-glow)">
+    <path
+      d="M1016 383 L1133 357 L1204 383 L1317 355 L1388 383 L1509 318"
+      stroke="#f7f9fb"
+      stroke-width="11"
+      opacity="0.34"
+    />
+    <path
+      d="M1016 383 L1133 357 L1204 383 L1317 355 L1388 383 L1509 318"
+      stroke="#ffffff"
+      stroke-width="6"
+      opacity="0.98"
+    />
+  </g>
+
+  <g fill="#ffffff" opacity="0.42">
+    <circle cx="1016" cy="383" r="15.5"/>
+    <circle cx="1509" cy="318" r="15.5"/>
+  </g>
+
+  <g fill="#ffffff">
+    <circle cx="1016" cy="383" r="7.3"/>
+    <circle cx="1133" cy="357" r="7.3"/>
+    <circle cx="1317" cy="355" r="7.3"/>
+    <circle cx="1509" cy="318" r="7.3"/>
+  </g>
+
+  <g fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.96">
+    <circle cx="1509" cy="318" r="11.5"/>
+    <path d="M1509 302 L1521 318 L1509 334 L1497 318 Z"/>
+  </g>
+</svg>
