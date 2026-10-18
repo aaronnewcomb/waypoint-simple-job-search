@@ -88,4 +88,4 @@ run.sh        Local development launcher
 
 ## License
 
-Waypoint is licensed under the MIT License. See [LICENSE](LICENSE).
+Waypoint is licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE).
